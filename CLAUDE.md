@@ -19,14 +19,14 @@ ESPHome external component for the SparkFun Qwiic Keypad (12 button). The full r
 - **Phase 2 confirmed (same day):** `on_key`, `key_collector` progress/result/timeout and `*` as backspace all work. The generated release fires about 100 ms after each press, and a repeat press inside the delay produces release-then-press as designed.
 - **Known issue (hardware): stiff new keys can register one tap as two presses.** The `*` key did this three times (gaps of 86–112 ms), so one tap gave two backspaces in `key_collector`. The firmware's `Keypad` library only debounces for 10 ms, so a slower bounce on a stiff membrane key reaches the FIFO as a second press. Document this in the README, together with the lost-overlapping-press limitation. A possible future mitigation (not built, not decided): an optional filter that ignores a repeat of the same key within N ms, using the device's time-since-pressed values.
 - **Phase 3 confirmed (same day):** the `binary_sensor`s (by `key:` and by `row:`/`col:`) go ON on press and OFF on release, and a new key releases the previous one first. On-device automations (`on_press`) fire for every press.
-- **Found and fixed: Home Assistant could miss presses with a 100 ms `release_delay`.** The API sends state updates in batches every `batch_delay` (100 ms) and keeps only each entity's latest state (deduplication in `api_connection.h`). With a 100 ms release, ON and OFF often landed in the same batch, so only OFF reached the API. The `[S]` lines in the log viewer come from the same API feed, which is how this showed up: missing `>> ON` lines. The default was raised to **200 ms**. A same-key double press within 200 ms can still reach HA as a single press. Document in the README: keep `release_delay` above the API's `batch_delay` if HA must see every press.
+- **Found and fixed: Home Assistant could miss presses with a 100 ms `release_delay`.** The API sends state updates in batches every `batch_delay` (100 ms) and keeps only each entity's latest state (deduplication in `api_connection.h`). With a 100 ms release, ON and OFF often landed in the same batch, so only OFF reached the API. The `[S]` lines in the log viewer come from the same API feed, which is how this showed up: missing `>> ON` lines. The default was raised to **200 ms**, confirmed on hardware: every press now reaches the API as ON then OFF. A same-key double press within 200 ms can still reach HA as a single press. Seen once: a second `5` 102 ms after the first (most likely a stiff-key bounce) reached the API as ON, ON, OFF. Document in the README: keep `release_delay` above the API's `batch_delay` if HA must see every press.
 
 ## Hardware (from the photos in `images/`)
 
 - Keypad board **v1.0**, MCU **ATtiny84** (`TINY84-20U`), which matches the SparkFun firmware the roadmap is based on. Key layout: `1 2 3 / 4 5 6 / 7 8 9 / * 0 #`.
 - **ADR jumper open**, so the address is the default `0x4B`.
 - **I2C pull-up jumper closed**, so the keypad's 2.2 kΩ pull-ups are on.
-- **INT is not wired.** It's only a solder pad, not part of the Qwiic connector, and the keypad is connected by a Qwiic cable. Phase 1 polls the bus; the INT pin stays an optional extra.
+- **INT is not wired.** It's only a solder pad, not part of the Qwiic connector, and the keypad is connected by a Qwiic cable. The component polls the bus and never uses INT (see Future TODO below).
 - Test rig: ESP32-WROOM-32 dev board. Devices on the I2C bus:
 
   | Device                     | Address                       |
@@ -47,7 +47,7 @@ ESPHome external component for the SparkFun Qwiic Keypad (12 button). The full r
 3. Add `on_key` and the `key_provider` hook.
 4. Test with `key_collector` (PIN entry with `#` as enter and `*` as backspace).
 5. Add the per-key `binary_sensor`.
-6. Extras if there's time: the keypad's INT pin, slower polling, README and CI.
+6. Extras if there's time: README and CI (the INT pin was dropped, the rest moved to Future TODO).
 
 ## Decision: follow `matrix_keypad` as closely as possible (decided 2026-11-04)
 
@@ -61,6 +61,14 @@ Mirror ESPHome's [`matrix_keypad`](https://github.com/esphome/esphome/tree/dev/e
 - Left out because the ATtiny scans the matrix: `rows`, `columns`, `has_diodes`, `has_pulldowns` and `debounce_time`.
 
 The one unavoidable difference: the release is **generated after an optional `release_delay:`** (default 200 ms) instead of coming from the hardware. A repeat press of the same key inside the delay publishes OFF then ON, so every press still fires `on_press`. No `LATCH` mode, since matrix_keypad has none.
+
+## Future TODO (not needed for the first release, decided 2026-11-04)
+
+- **Slower polling.** `loop()` reads the keypad's FIFO every loop (about every 16 ms), which is two I2C transactions even when nothing was pressed. Reading less often (e.g. a configurable interval) would reduce bus traffic.
+- **`max_age`.** Optionally drop presses whose time-since-pressed (from the FIFO) is older than N ms, e.g. presses queued during a Wi-Fi stall or a long-blocking component.
+- **Repeat filter for stiff keys.** Optionally ignore a repeat of the same key within N ms, using the device's time-since-pressed values. Wait and see whether new keys loosen up with use first (see the stiff-key note above).
+
+**Decided not to do: `INT` pin support.** The component is designed for the Qwiic connector only, and `INT` isn't on it. The component README says so.
 
 ## Open questions
 

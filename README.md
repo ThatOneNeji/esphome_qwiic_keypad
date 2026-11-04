@@ -4,10 +4,9 @@
 
 An [ESPHome](https://esphome.io/) external component for the
 [SparkFun Qwiic Keypad - 12 Button](https://www.sparkfun.com/sparkfun-qwiic-keypad-12-button.html): read key presses
-over I2C.
-
-> **Work in progress.** The component currently logs key presses only. `on_key`, `key_collector` support and
-> per-key `binary_sensor`s are planned.
+over I2C, with per-key binary sensors and [`key_collector`](https://esphome.io/components/key_collector/) support. It
+works like ESPHome's own [`matrix_keypad`](https://esphome.io/components/matrix_keypad/), without needing any GPIO
+pins for the keys.
 
 ## Installation
 
@@ -32,10 +31,40 @@ i2c:
 
 qwiic_keypad:
   id: keypad
-  address: 0x4B
+  on_key:
+    - logger.log:
+        format: "Key %c pressed"
+        args: ["x"]
+
+binary_sensor:
+  - platform: qwiic_keypad
+    qwiic_keypad_id: keypad
+    name: "Keypad 5"
+    key: "5"
+
+key_collector:
+  - id: pincode
+    source_id: keypad
+    min_length: 4
+    max_length: 4
+    end_keys: "#"
+    end_key_required: true
+    back_keys: "*"
+    on_result:
+      - logger.log:
+          format: "PIN entered: %s"
+          args: ["x.c_str()"]
 ```
 
-See [`example.yaml`](example.yaml) / [`example.esp-idf.yaml`](example.esp-idf.yaml) for complete configs.
+See [`example.yaml`](example.yaml) / [`example.esp-idf.yaml`](example.esp-idf.yaml) for complete configs, and
+**[components/qwiic_keypad/README.md](components/qwiic_keypad/README.md)** for the hardware overview, wiring,
+configuration reference, known limitations and a troubleshooting guide.
+
+## Components
+
+| Component                                           | Description                                                                                                                        |
+|-----------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| [`qwiic_keypad`](components/qwiic_keypad/README.md) | I2C hub with `on_key` and `key_collector` support, plus a `binary_sensor` platform for single keys, for the SparkFun Qwiic Keypad. |
 
 ## Development
 
@@ -48,7 +77,9 @@ pre-commit run --all-files
 ```
 
 CI (`.github/workflows/ci.yml`) runs the same pre-commit checks, plus `esphome config`/`esphome compile` against
-the example configs (via the local-source fixtures in `.github/ci/`) on every push and pull request.
+the example configs (via the local-source fixtures in `.github/ci/`) on every push to `main` and every pull request.
+
+API documentation can be generated with [Doxygen](https://www.doxygen.nl/) (`doxygen Doxyfile`, output in `docs/`).
 
 ## License
 
