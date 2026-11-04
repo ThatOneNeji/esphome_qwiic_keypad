@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-ESPHome external component for the SparkFun Qwiic Keypad (12 button). The full roadmap is in [tmp/roadmap.md](tmp/roadmap.md), ready for Saturday 2026-10-31. It's based on the qwiic_btn code (`/home/neji/repos/_mine/esphome_qwiic_btn`), the keypad's firmware source and SparkFun's library, and ESPHome's `matrix_keypad`, `key_collector` and `key_provider` source.
+ESPHome external component for the SparkFun Qwiic Keypad (12 button). The original roadmap is in [tmp/roadmap.md](tmp/roadmap.md) (local only: `tmp/` is gitignored). It's based on the qwiic_btn code (`/home/neji/repos/_mine/esphome_qwiic_btn`), the keypad's firmware source and SparkFun's library, and ESPHome's `matrix_keypad`, `key_collector` and `key_provider` source.
 
 ## What's different from what we expected
 
@@ -40,14 +40,13 @@ ESPHome external component for the SparkFun Qwiic Keypad (12 button). The full r
 - **Testing workflow:** the user builds and flashes from their own ESPHome instance, which holds the secrets and the shared `common/` package files. Hardware test configs (e.g. `tmp/board09.yaml`) therefore pull the component from GitHub (`ref: develop`), so changes must be pushed before they can be tested. Test configs cover the keypad only, not qwiic_btn, since users won't necessarily have both.
 - `images/` holds README-sized copies (≤1200 px, metadata stripped). The full-size originals are in `images/originals/`, which git ignores.
 
-## Order for Saturday
+## Status (2026-11-04)
 
-1. Tidy the repo: commit the dot-files, fix the Doxyfile, set up pre-commit, copy CI from qwiic_btn.
-2. Get the keypad talking on the ESP32 so presses show up in the log. Start the I2C bus at 100 kHz, not the 800 kHz from the qwiic_btn notes.
-3. Add `on_key` and the `key_provider` hook.
-4. Test with `key_collector` (PIN entry with `#` as enter and `*` as backspace).
-5. Add the per-key `binary_sensor`.
-6. Extras if there's time: README and CI (the INT pin was dropped, the rest moved to Future TODO).
+**v1.0.0 released.** Everything on the original roadmap is done: repo tooling, I2C bring-up, `on_key` + `key_provider`, `key_collector`, the per-key `binary_sensor`, and the READMEs. All of it is tested on hardware.
+
+- **Workflow:** work happens on `develop`, and reaches `main` through a pull request. `main` is protected: a PR and all 9 CI checks are required, force pushes and deletion are blocked, and admins can bypass in an emergency. Branches do not need to be up to date with `main` before merging.
+- **CI:** pre-commit, plus `esphome config` and `esphome compile` for the Arduino and ESP-IDF fixtures on ESPHome `2026.7.0` (the minimum) and `latest`. It runs on PRs, pushes to `main`, and weekly (Fridays 02:00 UTC).
+- **What's next:** see Future TODO below.
 
 ## Decision: follow `matrix_keypad` as closely as possible (decided 2026-11-04)
 
@@ -70,6 +69,6 @@ The one unavoidable difference: the release is **generated after an optional `re
 
 **Decided not to do: `INT` pin support.** The component is designed for the Qwiic connector only, and `INT` isn't on it. The component README says so.
 
-## Open questions
+## Settled questions
 
-- Minimum ESPHome version: keep `2026.7.0` if the first CI run passes on it.
+- Minimum ESPHome version: `2026.7.0`. CI passed on it (config and compile, Arduino and ESP-IDF) on PR #1.
