@@ -34,4 +34,10 @@ static const uint8_t QWIIC_KEYPAD_UPDATE_FIFO_COMMAND = 0x01;
 // Depth of the device's press buffer; on overflow it drops the oldest press
 static const uint8_t QWIIC_KEYPAD_FIFO_SIZE = 15;
 
+// The characters the firmware reports, in physical position order (row by row, left to right). A key's index in
+// this string is its position: row = position / QWIIC_KEYPAD_COLUMNS, col = position % QWIIC_KEYPAD_COLUMNS.
+static const char *const QWIIC_KEYPAD_LAYOUT = "123456789*0#";
+static const uint8_t QWIIC_KEYPAD_KEY_COUNT = 12;
+static const uint8_t QWIIC_KEYPAD_COLUMNS = 3;
+
 }  // namespace esphome::qwiic_keypad

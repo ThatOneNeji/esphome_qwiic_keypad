@@ -1,10 +1,12 @@
 #include "qwiic_keypad.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
+#include <cstring>
 
 namespace esphome::qwiic_keypad {
 
 static const char *const TAG = "qwiic_keypad";
+static const char *const RELEASE_TIMEOUT = "release";
 
 void QwiicKeypadComponent::setup() {
   // Verify I2C communication by reading and verifying the chip ID
@@ -58,7 +60,13 @@ void QwiicKeypadComponent::loop() {
     if (key == 0)
       return;
 
-    ESP_LOGD(TAG, "Key '%c' pressed (%u ms ago)", key, time_since_pressed);
+    const char *found = strchr(QWIIC_KEYPAD_LAYOUT, key);
+    if (found == nullptr) {
+      ESP_LOGW(TAG, "Ignoring unknown key code 0x%02X", key);
+      continue;
+    }
+    ESP_LOGV(TAG, "Device reported key '%c' (%u ms ago)", key, time_since_pressed);
+    this->press_key_(found - QWIIC_KEYPAD_LAYOUT);
   }
 }
 
@@ -77,9 +85,50 @@ bool QwiicKeypadComponent::read_next_press_(uint8_t &key, uint16_t &time_since_p
   return true;
 }
 
+void QwiicKeypadComponent::press_key_(int position) {
+  // Only one key is active at a time, as in matrix_keypad: a new press releases the previous key first. This also
+  // turns a repeat press of the same key into a release followed by a press.
+  if (this->pressed_key_ != -1) {
+    this->cancel_timeout(RELEASE_TIMEOUT);
+    this->release_key_();
+  }
+
+  int row = position / QWIIC_KEYPAD_COLUMNS;
+  int col = position % QWIIC_KEYPAD_COLUMNS;
+  ESP_LOGD(TAG, "key @ row %d, col %d pressed", row, col);
+  for (auto &listener : this->listeners_)
+    listener->button_pressed(row, col);
+  uint8_t keycode = this->keys_[position];
+  ESP_LOGD(TAG, "key '%c' pressed", keycode);
+  for (auto &trigger : this->key_triggers_)
+    trigger->trigger(keycode);
+  for (auto &listener : this->listeners_)
+    listener->key_pressed(keycode);
+  this->send_key_(keycode);
+  this->pressed_key_ = position;
+
+  // The device never reports a release, so generate one
+  this->set_timeout(RELEASE_TIMEOUT, this->release_delay_, [this]() { this->release_key_(); });
+}
+
+void QwiicKeypadComponent::release_key_() {
+  int row = this->pressed_key_ / QWIIC_KEYPAD_COLUMNS;
+  int col = this->pressed_key_ % QWIIC_KEYPAD_COLUMNS;
+  ESP_LOGD(TAG, "key @ row %d, col %d released", row, col);
+  for (auto &listener : this->listeners_)
+    listener->button_released(row, col);
+  uint8_t keycode = this->keys_[this->pressed_key_];
+  ESP_LOGD(TAG, "key '%c' released", keycode);
+  for (auto &listener : this->listeners_)
+    listener->key_released(keycode);
+  this->pressed_key_ = -1;
+}
+
 void QwiicKeypadComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "Qwiic Keypad:");
   ESP_LOGCONFIG(TAG, "  Firmware Version: %u.%u", this->firmware_major_, this->firmware_minor_);
+  ESP_LOGCONFIG(TAG, "  Keys: %s", this->keys_);
+  ESP_LOGCONFIG(TAG, "  Release Delay: %" PRIu32 " ms", this->release_delay_);
 
   switch (this->error_code_) {
     case NONE:
@@ -94,5 +143,9 @@ void QwiicKeypadComponent::dump_config() {
 
   LOG_I2C_DEVICE(this);
 }
+
+void QwiicKeypadComponent::register_listener(QwiicKeypadListener *listener) { this->listeners_.push_back(listener); }
+
+void QwiicKeypadComponent::register_key_trigger(QwiicKeypadKeyTrigger *trig) { this->key_triggers_.push_back(trig); }
 
 }  // namespace esphome::qwiic_keypad

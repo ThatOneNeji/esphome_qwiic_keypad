@@ -11,6 +11,12 @@ ESPHome external component for the SparkFun Qwiic Keypad (12 button). The full r
 - **The keypad sends plain characters** (`'0'-'9'`, `*`, `#`), so plugging it into `key_collector` is almost free. We make the class a `KeyProvider` and call `send_key_()` for each press.
 - **`Doxyfile` is ESPHome's own file**, not ours (`PROJECT_NAME = ESPHome`, `INPUT = esphome`). The copy in qwiic_btn is the same, so it was never adapted there either. The roadmap lists the settings to change.
 
+## Confirmed on hardware (2026-11-04, ESP-IDF, I2C at 800 kHz)
+
+- Chip ID and firmware `1.0` read correctly. All 12 keys report the right character, picked up 0–17 ms after the press. The write-`0x06`-then-read sequence works, with no communication errors over several minutes of polling.
+- Holding a key reports **one** press: no auto-repeat, and nothing on release. This confirms the generated-release design.
+- **Known limitation (firmware, can't fix from our side): overlapping presses are lost.** The firmware calls the Arduino `Keypad` library's `getKey()`, which only reports slot 0 of its key list. A key that goes down while the previous key is still held, or within about 20 ms of its release, lands in slot 1 and never reaches the FIFO. Seen in a fast-typing test: `1`, `3`, `4`… with the `2` missing. Document this in the README.
+
 ## Hardware (from the photos in `images/`)
 
 - Keypad board **v1.0**, MCU **ATtiny84** (`TINY84-20U`), which matches the SparkFun firmware the roadmap is based on. Key layout: `1 2 3 / 4 5 6 / 7 8 9 / * 0 #`.
@@ -27,6 +33,7 @@ ESPHome external component for the SparkFun Qwiic Keypad (12 button). The full r
 
   `i2c: scan: true` will confirm the MCP23017's address. No address clashes. Up to three sets of pull-ups are in parallel, so start at 100 kHz. If there are errors at 400 kHz, try cutting the keypad's I2C jumper first.
 - The 2-channel relay board is driven by GPIO, not I2C, and is not part of this project.
+- **Testing workflow:** the user builds and flashes from their own ESPHome instance, which holds the secrets and the shared `common/` package files. Hardware test configs (e.g. `tmp/board09.yaml`) therefore pull the component from GitHub (`ref: develop`), so changes must be pushed before they can be tested. Test configs cover the keypad only, not qwiic_btn, since users won't necessarily have both.
 - `images/` holds README-sized copies (≤1200 px, metadata stripped). The full-size originals are in `images/originals/`, which git ignores.
 
 ## Order for Saturday

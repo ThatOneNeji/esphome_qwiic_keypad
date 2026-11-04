@@ -29,3 +29,28 @@ qwiic_keypad:
   id: keypad
   i2c_id: i2c_bus
   address: 0x4B
+  on_key:
+    - logger.log:
+        format: "on_key: %c"
+        args: ["x"]
+
+key_collector:
+  - id: pincode
+    source_id: keypad
+    min_length: 4
+    max_length: 4
+    end_keys: "#"
+    end_key_required: true
+    back_keys: "*"
+    allowed_keys: "0123456789*#"
+    timeout: 5s
+    on_progress:
+      - logger.log:
+          format: "input progress: '%s'"
+          args: ["x.c_str()"]
+    on_result:
+      - logger.log:
+          format: "input result: '%s'"
+          args: ["x.c_str()"]
+    on_timeout:
+      - logger.log: "input timed out"
