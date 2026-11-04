@@ -1,0 +1,31 @@
+# CI fixture: mirrors ../../example.yaml but points external_components at the local checkout
+# instead of GitHub, so CI validates the component as committed rather than the last published
+# ref. Keep in sync with ../../example.yaml (besides the `external_components:` block).
+esphome:
+  name: qwiic-keypad-arduino
+
+esp32:
+  board: denky32
+  framework:
+    type: arduino
+
+external_components:
+  - source: ../../components
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+logger:
+
+i2c:
+  - id: i2c_bus
+    sda: GPIO21
+    scl: GPIO22
+    frequency: 100kHz
+    scan: true
+
+qwiic_keypad:
+  id: keypad
+  i2c_id: i2c_bus
+  address: 0x4B

@@ -1,0 +1,31 @@
+esphome:
+  name: qwiic-keypad-esp-idf
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+external_components:
+  source:
+    type: git
+    url: https://github.com/ThatOneNeji/esphome_qwiic_keypad
+    ref: main
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+logger:
+
+i2c:
+  - id: i2c_bus
+    sda: GPIO21
+    scl: GPIO22
+    frequency: 100kHz
+    scan: true
+
+qwiic_keypad:
+  id: keypad
+  i2c_id: i2c_bus
+  address: 0x4B

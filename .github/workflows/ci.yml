@@ -1,0 +1,61 @@
+---
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Fridays 02:00 UTC: catches a new ESPHome release breaking the component (via the `latest`
+    # matrix entry below) with the weekend free to fix it. Scheduled runs only use main.
+    - cron: "0 2 * * 5"
+
+jobs:
+  pre-commit:
+    name: pre-commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: pre-commit/action@v3.0.1
+        env:
+          # no-commit-to-branch is meant to stop a local `git commit` while on a protected
+          # branch; CI always has that branch checked out by the time it runs (that's the point
+          # of the push trigger below), so the hook would fail on every single CI run on main.
+          # Branch protection on GitHub is the right place to actually enforce "no direct
+          # commits to main", not this content linter.
+          SKIP: no-commit-to-branch
+
+  esphome:
+    name: esphome ${{ matrix.version }} ${{ matrix.step }} (${{ matrix.file }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        file: [.github/ci/arduino.yaml, .github/ci/esp-idf.yaml]
+        step: [config, compile]
+        # Oldest supported release (keep in sync with "Minimum ESPHome version" in README.md)
+        # plus whatever is newest on PyPI at the time the job runs.
+        version: ["2026.7.0", latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ESPHome ${{ matrix.version }}
+        run: |
+          if [ "${{ matrix.version }}" = "latest" ]; then
+            pip install esphome
+          else
+            pip install "esphome==${{ matrix.version }}"
+          fi
+      - name: Fake secrets
+        # !secret resolves secrets.yaml next to the config file being parsed, not the CWD.
+        run: |
+          echo "wifi_ssid: \"test\"" > .github/ci/secrets.yaml
+          echo "wifi_password: \"testtest\"" >> .github/ci/secrets.yaml
+      - name: esphome ${{ matrix.step }}
+        run: esphome ${{ matrix.step }} "${{ matrix.file }}"
