@@ -16,6 +16,8 @@ ESPHome external component for the SparkFun Qwiic Keypad (12 button). The full r
 - Chip ID and firmware `1.0` read correctly. All 12 keys report the right character, picked up 0–17 ms after the press. The write-`0x06`-then-read sequence works, with no communication errors over several minutes of polling.
 - Holding a key reports **one** press: no auto-repeat, and nothing on release. This confirms the generated-release design.
 - **Known limitation (firmware, can't fix from our side): overlapping presses are lost.** The firmware calls the Arduino `Keypad` library's `getKey()`, which only reports slot 0 of its key list. A key that goes down while the previous key is still held, or within about 20 ms of its release, lands in slot 1 and never reaches the FIFO. Seen in a fast-typing test: `1`, `3`, `4`… with the `2` missing. Document this in the README.
+- **Phase 2 confirmed (same day):** `on_key`, `key_collector` progress/result/timeout and `*` as backspace all work. The generated release fires about 100 ms after each press, and a repeat press inside the delay produces release-then-press as designed.
+- **Known issue (hardware): stiff new keys can register one tap as two presses.** The `*` key did this three times (gaps of 86–112 ms), so one tap gave two backspaces in `key_collector`. The firmware's `Keypad` library only debounces for 10 ms, so a slower bounce on a stiff membrane key reaches the FIFO as a second press. Document this in the README, together with the lost-overlapping-press limitation. A possible future mitigation (not built, not decided): an optional filter that ignores a repeat of the same key within N ms, using the device's time-since-pressed values.
 
 ## Hardware (from the photos in `images/`)
 

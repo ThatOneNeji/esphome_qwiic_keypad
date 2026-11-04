@@ -54,3 +54,14 @@ key_collector:
           args: ["x.c_str()"]
     on_timeout:
       - logger.log: "input timed out"
+
+binary_sensor:
+  - platform: qwiic_keypad
+    qwiic_keypad_id: keypad
+    name: "Keypad 5"
+    key: "5"
+  - platform: qwiic_keypad
+    qwiic_keypad_id: keypad
+    name: "Keypad # (row 3, col 2)"
+    row: 3
+    col: 2
