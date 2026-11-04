@@ -44,9 +44,11 @@ CONFIG_SCHEMA = (
         {
             cv.GenerateID(): cv.declare_id(QwiicKeypadComponent),
             cv.Optional(CONF_KEYS, default=KEYPAD_LAYOUT): check_keys,
-            # The device never reports a release, so a key is released this long after its press
+            # The device never reports a release, so a key is released this long after its press. Keep it above the
+            # API's batch_delay (100ms): the API only sends an entity's latest state per batch, so a shorter press
+            # would reach Home Assistant as OFF only.
             cv.Optional(
-                CONF_RELEASE_DELAY, default="100ms"
+                CONF_RELEASE_DELAY, default="200ms"
             ): cv.positive_time_period_milliseconds,
             cv.Optional(CONF_ON_KEY): automation.validate_automation(
                 {

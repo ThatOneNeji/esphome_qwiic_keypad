@@ -18,6 +18,8 @@ ESPHome external component for the SparkFun Qwiic Keypad (12 button). The full r
 - **Known limitation (firmware, can't fix from our side): overlapping presses are lost.** The firmware calls the Arduino `Keypad` library's `getKey()`, which only reports slot 0 of its key list. A key that goes down while the previous key is still held, or within about 20 ms of its release, lands in slot 1 and never reaches the FIFO. Seen in a fast-typing test: `1`, `3`, `4`… with the `2` missing. Document this in the README.
 - **Phase 2 confirmed (same day):** `on_key`, `key_collector` progress/result/timeout and `*` as backspace all work. The generated release fires about 100 ms after each press, and a repeat press inside the delay produces release-then-press as designed.
 - **Known issue (hardware): stiff new keys can register one tap as two presses.** The `*` key did this three times (gaps of 86–112 ms), so one tap gave two backspaces in `key_collector`. The firmware's `Keypad` library only debounces for 10 ms, so a slower bounce on a stiff membrane key reaches the FIFO as a second press. Document this in the README, together with the lost-overlapping-press limitation. A possible future mitigation (not built, not decided): an optional filter that ignores a repeat of the same key within N ms, using the device's time-since-pressed values.
+- **Phase 3 confirmed (same day):** the `binary_sensor`s (by `key:` and by `row:`/`col:`) go ON on press and OFF on release, and a new key releases the previous one first. On-device automations (`on_press`) fire for every press.
+- **Found and fixed: Home Assistant could miss presses with a 100 ms `release_delay`.** The API sends state updates in batches every `batch_delay` (100 ms) and keeps only each entity's latest state (deduplication in `api_connection.h`). With a 100 ms release, ON and OFF often landed in the same batch, so only OFF reached the API. The `[S]` lines in the log viewer come from the same API feed, which is how this showed up: missing `>> ON` lines. The default was raised to **200 ms**. A same-key double press within 200 ms can still reach HA as a single press. Document in the README: keep `release_delay` above the API's `batch_delay` if HA must see every press.
 
 ## Hardware (from the photos in `images/`)
 
@@ -58,7 +60,7 @@ Mirror ESPHome's [`matrix_keypad`](https://github.com/esphome/esphome/tree/dev/e
 - Only one key is active at a time: a new key releases the previous one first.
 - Left out because the ATtiny scans the matrix: `rows`, `columns`, `has_diodes`, `has_pulldowns` and `debounce_time`.
 
-The one unavoidable difference: the release is **generated after an optional `release_delay:`** (default about 100 ms) instead of coming from the hardware. A repeat press of the same key inside the delay publishes OFF then ON, so every press still fires `on_press`. No `LATCH` mode, since matrix_keypad has none.
+The one unavoidable difference: the release is **generated after an optional `release_delay:`** (default 200 ms) instead of coming from the hardware. A repeat press of the same key inside the delay publishes OFF then ON, so every press still fires `on_press`. No `LATCH` mode, since matrix_keypad has none.
 
 ## Open questions
 

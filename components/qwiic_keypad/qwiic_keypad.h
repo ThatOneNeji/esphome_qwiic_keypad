@@ -47,7 +47,7 @@ class QwiicKeypadComponent final : public key_provider::KeyProvider, public Comp
 
  protected:
   const char *keys_{QWIIC_KEYPAD_LAYOUT};
-  uint32_t release_delay_{100};
+  uint32_t release_delay_{200};
   uint8_t firmware_major_{0};
   uint8_t firmware_minor_{0};
   int pressed_key_{-1};  // position of the key currently held, or -1
