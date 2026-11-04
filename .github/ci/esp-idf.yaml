@@ -1,0 +1,67 @@
+# CI fixture: mirrors ../../example.esp-idf.yaml but points external_components at the local
+# checkout instead of GitHub, so CI validates the component as committed rather than the last
+# published ref. Keep in sync with ../../example.esp-idf.yaml (besides `external_components:`).
+esphome:
+  name: qwiic-keypad-esp-idf
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+external_components:
+  - source: ../../components
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+logger:
+
+i2c:
+  - id: i2c_bus
+    sda: GPIO21
+    scl: GPIO22
+    frequency: 100kHz
+    scan: true
+
+qwiic_keypad:
+  id: keypad
+  i2c_id: i2c_bus
+  address: 0x4B
+  on_key:
+    - logger.log:
+        format: "on_key: %c"
+        args: ["x"]
+
+key_collector:
+  - id: pincode
+    source_id: keypad
+    min_length: 4
+    max_length: 4
+    end_keys: "#"
+    end_key_required: true
+    back_keys: "*"
+    allowed_keys: "0123456789*#"
+    timeout: 5s
+    on_progress:
+      - logger.log:
+          format: "input progress: '%s'"
+          args: ["x.c_str()"]
+    on_result:
+      - logger.log:
+          format: "input result: '%s'"
+          args: ["x.c_str()"]
+    on_timeout:
+      - logger.log: "input timed out"
+
+binary_sensor:
+  - platform: qwiic_keypad
+    qwiic_keypad_id: keypad
+    name: "Keypad 5"
+    key: "5"
+  - platform: qwiic_keypad
+    qwiic_keypad_id: keypad
+    name: "Keypad # (row 3, col 2)"
+    row: 3
+    col: 2
