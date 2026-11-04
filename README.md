@@ -81,6 +81,10 @@ the example configs (via the local-source fixtures in `.github/ci/`) on every pu
 
 API documentation can be generated with [Doxygen](https://www.doxygen.nl/) (`doxygen Doxyfile`, output in `docs/`).
 
+## Notes
+
+See [RANDOMTHOUGHTS.md](RANDOMTHOUGHTS.md) for why this exists and a fuller example.
+
 ## License
 
 [MIT](LICENSE)
